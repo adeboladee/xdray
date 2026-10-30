@@ -6,8 +6,9 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "build": "node ./node_modules/typescript7/bin/tsc -p tsconfig.build.json",
+    "typecheck": "node ./node_modules/typescript7/bin/tsc -p tsconfig.json --noEmit",
+    "lint": "eslint .",
     "test": "vitest run",
     "test:integration": "XDRAY_INTEGRATION=1 vitest run tests/integration"
   },
@@ -15,8 +16,13 @@
     "@stellar/stellar-sdk": "^17.4.0"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/node": "^24.10.1",
-    "typescript": "^7.0.2",
+    "eslint": "^10.13.0",
+    "globals": "^17.13.0",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.72.1",
+    "typescript7": "npm:typescript@^7.0.2",
     "vitest": "^5.0.5"
   }
 }
