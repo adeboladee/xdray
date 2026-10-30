@@ -1,6 +1,7 @@
 import { Horizon, StellarToml } from "@stellar/stellar-sdk";
 
 import { validateHomeDomain } from "./homeDomain.js";
+import { withTimeout } from "./timeout.js";
 
 export interface AccountInfo {
   homeDomain: string | null;
@@ -28,10 +29,13 @@ export class HorizonStellarNetwork implements StellarNetwork {
   }
 
   async loadAccount(accountId: string): Promise<AccountInfo> {
-    const account = await this.server.loadAccount(accountId);
-    const homeDomain = account.home_domain?.trim();
+    const account = await withTimeout(
+      this.server.loadAccount(accountId),
+      this.timeoutMs,
+      `Horizon account lookup for ${accountId}`,
+    );
 
-    return { homeDomain: homeDomain ? homeDomain : null };
+    return { homeDomain: account.home_domain || null };
   }
 
   async fetchStellarToml(domain: string): Promise<unknown> {
