@@ -1,3 +1,6 @@
+import { domainToUnicode } from "node:url";
+
+import { validateHomeDomain } from "../homeDomain.js";
 import type { AccountInfo, StellarNetwork } from "../network.js";
 import type {
   Finding,
@@ -34,7 +37,12 @@ type AssetReadResult =
   | { kind: "unreadable" };
 
 type VerificationResult =
-  | { verified: true; homeDomain: string }
+  | {
+      verified: true;
+      homeDomain: string;
+      punycode: boolean;
+      homeDomainUnicode?: string;
+    }
   | { verified: false; reason: FindingReason; message: string };
 
 interface LookupCaches {
@@ -151,11 +159,11 @@ async function verifyAsset(
   network: StellarNetwork,
   caches: LookupCaches,
 ): Promise<VerificationResult> {
-  let homeDomain: string | null;
+  let rawHomeDomain: string | null;
 
   try {
     const account = await cachedLoadAccount(caches, network, asset.issuer);
-    homeDomain = account.homeDomain?.trim() || null;
+    rawHomeDomain = account.homeDomain || null;
   } catch {
     return {
       verified: false,
@@ -166,7 +174,7 @@ async function verifyAsset(
     };
   }
 
-  if (!homeDomain) {
+  if (!rawHomeDomain) {
     return {
       verified: false,
       reason: "no-home-domain",
@@ -175,6 +183,23 @@ async function verifyAsset(
         "That issuer does not publish a home domain, so the asset cannot be verified as legitimate.",
     };
   }
+
+  const validation = validateHomeDomain(rawHomeDomain);
+
+  if (!validation.ok) {
+    return {
+      verified: false,
+      reason: "invalid-home-domain",
+      message:
+        `This trustline is for ${asset.code} issued by ${asset.issuer}. ` +
+        "The issuer publishes a home domain that is not a valid public hostname, so this asset could not be verified.",
+    };
+  }
+
+  const homeDomain = validation.host;
+  const punycode = homeDomain
+    .split(".")
+    .some((label) => label.startsWith("xn--"));
 
   let document: unknown;
 
@@ -216,7 +241,16 @@ async function verifyAsset(
     sawSameCode = true;
 
     if (issuer === asset.issuer) {
-      return { verified: true, homeDomain };
+      if (punycode) {
+        return {
+          verified: true,
+          homeDomain,
+          punycode: true,
+          homeDomainUnicode: domainToUnicode(homeDomain),
+        };
+      }
+
+      return { verified: true, homeDomain, punycode: false };
     }
   }
 
@@ -329,6 +363,10 @@ export const lookalikeAssetIssuerRule: Rule = {
           assetCode: read.asset.code,
           issuer: read.asset.issuer,
           homeDomain: result.homeDomain,
+          punycode: result.punycode,
+          ...(result.homeDomainUnicode !== undefined
+            ? { homeDomainUnicode: result.homeDomainUnicode }
+            : {}),
         });
       } else {
         findings.push(

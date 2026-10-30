@@ -1,5 +1,7 @@
 import { Horizon, StellarToml } from "@stellar/stellar-sdk";
 
+import { validateHomeDomain } from "./homeDomain.js";
+
 export interface AccountInfo {
   homeDomain: string | null;
 }
@@ -33,7 +35,13 @@ export class HorizonStellarNetwork implements StellarNetwork {
   }
 
   async fetchStellarToml(domain: string): Promise<unknown> {
-    return StellarToml.Resolver.resolve(domain, {
+    const validation = validateHomeDomain(domain);
+
+    if (!validation.ok) {
+      throw new Error("Invalid home domain");
+    }
+
+    return StellarToml.Resolver.resolve(validation.host, {
       allowHttp: false,
       timeout: this.timeoutMs,
     });

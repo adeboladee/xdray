@@ -9,6 +9,7 @@ export type FindingReason =
   | "unsupported-asset"
   | "account-unreachable"
   | "no-home-domain"
+  | "invalid-home-domain"
   | "toml-unreachable"
   | "toml-malformed"
   | "lookup-limit-exceeded"
@@ -30,6 +31,8 @@ export interface VerifiedAsset {
   assetCode: string;
   issuer: string;
   homeDomain: string;
+  punycode: boolean;
+  homeDomainUnicode?: string;
 }
 
 export interface ParsedTransaction {

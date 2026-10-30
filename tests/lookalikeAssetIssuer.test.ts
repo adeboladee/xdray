@@ -61,6 +61,7 @@ describe("rule 001: look-alike asset issuer on changeTrust", () => {
         assetCode: "USDC",
         issuer: ISSUER,
         homeDomain: HOME_DOMAIN,
+        punycode: false,
       },
     ]);
     expect(result.unhandled).toEqual([]);
@@ -97,6 +98,7 @@ describe("rule 001: look-alike asset issuer on changeTrust", () => {
         assetCode: "USDC",
         issuer: attackerIssuer,
         homeDomain: attackerDomain,
+        punycode: false,
       },
     ]);
   });
@@ -143,6 +145,141 @@ describe("rule 001: look-alike asset issuer on changeTrust", () => {
       reason: "no-home-domain",
     });
     expect(network.tomlCalls).toEqual([]);
+  });
+
+  it("rejects an invalid home_domain before fetching stellar.toml", async () => {
+    const invalidDomain = "127.0.0.1:8443";
+    const network = new FakeStellarNetwork({
+      [ISSUER]: { homeDomain: invalidDomain },
+    });
+    const envelope = buildEnvelope([changeTrust("USDC", ISSUER)]);
+
+    const result = await analyzeTransaction(
+      envelope,
+      Networks.TESTNET,
+      network,
+    );
+
+    expect(network.tomlCalls).toEqual([]);
+    expect(result.verified).toEqual([]);
+    expect(result.findings).toHaveLength(1);
+    expect(result.findings[0]).toMatchObject({
+      operationIndex: 0,
+      assetCode: "USDC",
+      issuer: ISSUER,
+      reason: "invalid-home-domain",
+      severity: "warning",
+    });
+    expect(result.findings[0]?.message).not.toContain(invalidDomain);
+  });
+
+  it.each([" issuer.example", "   "])(
+    "rejects whitespace home_domain %j before fetching stellar.toml",
+    async (invalidDomain) => {
+      const network = new FakeStellarNetwork({
+        [ISSUER]: { homeDomain: invalidDomain },
+      });
+      const envelope = buildEnvelope([changeTrust("USDC", ISSUER)]);
+
+      const result = await analyzeTransaction(
+        envelope,
+        Networks.TESTNET,
+        network,
+      );
+
+      expect(network.tomlCalls).toEqual([]);
+      expect(result.verified).toEqual([]);
+      expect(result.findings).toHaveLength(1);
+      expect(result.findings[0]).toMatchObject({
+        operationIndex: 0,
+        assetCode: "USDC",
+        issuer: ISSUER,
+        reason: "invalid-home-domain",
+        severity: "warning",
+      });
+      expect(result.findings[0]?.message).not.toContain(invalidDomain);
+    },
+  );
+
+  it("treats an empty home_domain as missing", async () => {
+    const network = new FakeStellarNetwork({
+      [ISSUER]: { homeDomain: "" },
+    });
+    const envelope = buildEnvelope([changeTrust("USDC", ISSUER)]);
+
+    const result = await analyzeTransaction(
+      envelope,
+      Networks.TESTNET,
+      network,
+    );
+
+    expect(network.tomlCalls).toEqual([]);
+    expect(result.findings).toHaveLength(1);
+    expect(result.findings[0]).toMatchObject({
+      operationIndex: 0,
+      assetCode: "USDC",
+      issuer: ISSUER,
+      reason: "no-home-domain",
+    });
+  });
+
+  it("uses the normalized home_domain for lookup and verified output", async () => {
+    const network = new FakeStellarNetwork(
+      { [ISSUER]: { homeDomain: "Issuer.Example." } },
+      {
+        [HOME_DOMAIN]: {
+          CURRENCIES: [{ code: "USDC", issuer: ISSUER }],
+        },
+      },
+    );
+    const envelope = buildEnvelope([changeTrust("USDC", ISSUER)]);
+
+    const result = await analyzeTransaction(
+      envelope,
+      Networks.TESTNET,
+      network,
+    );
+
+    expect(network.tomlCalls).toEqual([HOME_DOMAIN]);
+    expect(result.findings).toEqual([]);
+    expect(result.verified).toEqual([
+      expect.objectContaining({
+        homeDomain: HOME_DOMAIN,
+        punycode: false,
+      }),
+    ]);
+  });
+
+  it("flags punycode verified domains with their unicode form", async () => {
+    const punycodeDomain = "xn--bcher-kva.example";
+    const network = new FakeStellarNetwork(
+      { [ISSUER]: { homeDomain: punycodeDomain } },
+      {
+        [punycodeDomain]: {
+          CURRENCIES: [{ code: "USDC", issuer: ISSUER }],
+        },
+      },
+    );
+    const envelope = buildEnvelope([changeTrust("USDC", ISSUER)]);
+
+    const result = await analyzeTransaction(
+      envelope,
+      Networks.TESTNET,
+      network,
+    );
+
+    expect(result.findings).toEqual([]);
+    expect(result.verified).toEqual([
+      {
+        ruleId: "lookalike-asset-issuer",
+        operationIndex: 0,
+        assetCode: "USDC",
+        issuer: ISSUER,
+        homeDomain: punycodeDomain,
+        punycode: true,
+        homeDomainUnicode: "bücher.example",
+      },
+    ]);
   });
 
   it("warns when stellar.toml is unreachable and does not throw", async () => {
