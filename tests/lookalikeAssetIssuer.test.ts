@@ -626,22 +626,103 @@ describe("rule 001: look-alike asset issuer on changeTrust", () => {
   });
 });
 
+// The fixture values below were checked independently against Horizon. The
+// network is faked, so these tests make no live calls.
 describe("real mainnet fixture", () => {
-  it("parses a genuine mainnet changeTrust envelope", () => {
-    const xdr = fs
+  const SOURCE_ACCOUNT =
+    "GCRKND5YSHWQTSEWN3I6EWYRZWAGUPVNHG3DIFJYHXKCE6G4OYJHS54L";
+  const MAINNET_ISSUER =
+    "GDDUEJLZZH74UK6O4N6QHAVGAY5CJTXKATF4K5WY3K7UBPL6O5NPNDUS";
+  const MAINNET_HOME_DOMAIN = "issuer.example";
+
+  function readFixture(): string {
+    return fs
       .readFileSync(
         path.join(__dirname, "fixtures", "mainnet-change-trust.xdr"),
         "utf8",
       )
       .trim();
+  }
 
-    const parsed = parseEnvelope(xdr, Networks.PUBLIC);
+  it("parses a genuine mainnet changeTrust envelope", () => {
+    const parsed = parseEnvelope(readFixture(), Networks.PUBLIC);
 
     expect(parsed.feeBumped).toBe(false);
-    expect(parsed.sourceAccount).toBe(
-      "GCRKND5YSHWQTSEWN3I6EWYRZWAGUPVNHG3DIFJYHXKCE6G4OYJHS54L",
-    );
+    expect(parsed.sourceAccount).toBe(SOURCE_ACCOUNT);
     expect(parsed.operations).toHaveLength(1);
-    expect(parsed.operations[0]?.type).toBe("changeTrust");
+
+    const operation = parsed.operations[0];
+
+    expect(operation?.type).toBe("changeTrust");
+
+    if (operation?.type !== "changeTrust") {
+      throw new Error("Expected fixture operation to be a changeTrust");
+    }
+
+    const line = operation.line;
+
+    if (!(line instanceof Asset)) {
+      throw new Error("Expected fixture changeTrust line to be an asset");
+    }
+
+    expect(line.getCode()).toBe("XAU");
+    expect(line.getIssuer()).toBe(MAINNET_ISSUER);
+  });
+
+  it("verifies the mainnet fixture asset when its issuer lists it", async () => {
+    const network = new FakeStellarNetwork(
+      { [MAINNET_ISSUER]: { homeDomain: MAINNET_HOME_DOMAIN } },
+      {
+        [MAINNET_HOME_DOMAIN]: {
+          CURRENCIES: [{ code: "XAU", issuer: MAINNET_ISSUER }],
+        },
+      },
+    );
+
+    const result = await analyzeTransaction(
+      readFixture(),
+      Networks.PUBLIC,
+      network,
+    );
+
+    expect(result.findings).toEqual([]);
+    expect(result.verified).toEqual([
+      {
+        ruleId: "lookalike-asset-issuer",
+        operationIndex: 0,
+        assetCode: "XAU",
+        issuer: MAINNET_ISSUER,
+        homeDomain: MAINNET_HOME_DOMAIN,
+        punycode: false,
+      },
+    ]);
+  });
+
+  it("flags the mainnet fixture asset when its issuer lists another issuer", async () => {
+    const network = new FakeStellarNetwork(
+      { [MAINNET_ISSUER]: { homeDomain: MAINNET_HOME_DOMAIN } },
+      {
+        [MAINNET_HOME_DOMAIN]: {
+          CURRENCIES: [{ code: "XAU", issuer: OTHER_ISSUER }],
+        },
+      },
+    );
+
+    const result = await analyzeTransaction(
+      readFixture(),
+      Networks.PUBLIC,
+      network,
+    );
+
+    expect(result.findings).toHaveLength(1);
+    expect(result.findings[0]).toMatchObject({
+      ruleId: "lookalike-asset-issuer",
+      severity: "critical",
+      operationIndex: 0,
+      assetCode: "XAU",
+      issuer: MAINNET_ISSUER,
+      reason: "issuer-mismatch",
+    });
+    expect(result.verified).toEqual([]);
   });
 });
