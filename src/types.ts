@@ -13,7 +13,13 @@ export type FindingReason =
   | "toml-unreachable"
   | "toml-malformed"
   | "lookup-limit-exceeded"
-  | "analysis-failed";
+  | "analysis-failed"
+  | "signer-removed"
+  | "signer-ed25519"
+  | "signer-hash-x"
+  | "signer-pre-auth-tx"
+  | "signer-signed-payload"
+  | "unsupported-signer";
 
 export interface Finding {
   ruleId: string;

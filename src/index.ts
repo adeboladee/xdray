@@ -10,6 +10,7 @@ export {
   lookalikeAssetIssuerRule,
   MAX_ISSUER_LOOKUPS,
 } from "./rules/lookalikeAssetIssuer.js";
+export { signerChangeRule } from "./rules/signerChange.js";
 export {
   rules,
   type Rule,

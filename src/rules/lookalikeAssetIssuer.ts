@@ -5,26 +5,12 @@ import type { AccountInfo, StellarNetwork } from "../network.js";
 import type {
   Finding,
   FindingReason,
-  ParsedTransaction,
   UnhandledOperation,
   VerifiedAsset,
 } from "../types.js";
+import type { Rule, RuleContext, RuleResult } from "./types.js";
 
-export interface RuleContext {
-  transaction: ParsedTransaction;
-  network: StellarNetwork;
-}
-
-export interface RuleResult {
-  findings: Finding[];
-  verified: VerifiedAsset[];
-  unhandled: UnhandledOperation[];
-}
-
-export interface Rule {
-  readonly id: string;
-  evaluate(context: RuleContext): Promise<RuleResult>;
-}
+export type { Rule, RuleContext, RuleResult } from "./types.js";
 
 interface AssetDetails {
   code: string;
