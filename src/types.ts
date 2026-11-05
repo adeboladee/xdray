@@ -1,6 +1,6 @@
 import type { OperationRecord } from "@stellar/stellar-sdk";
 
-export type Severity = "warning" | "critical";
+export type Severity = "critical" | "warning" | "info";
 
 export type FindingReason =
   | "invalid-xdr"
@@ -16,17 +16,18 @@ export type FindingReason =
   | "analysis-failed";
 
 export interface Finding {
-  ruleId: "lookalike-asset-issuer" | "envelope-parse";
+  ruleId: string;
   severity: Severity;
   operationIndex: number | null;
   assetCode: string | null;
   issuer: string | null;
   reason: FindingReason;
   message: string;
+  account?: string;
 }
 
 export interface VerifiedAsset {
-  ruleId: "lookalike-asset-issuer";
+  ruleId: string;
   operationIndex: number;
   assetCode: string;
   issuer: string;
@@ -35,9 +36,13 @@ export interface VerifiedAsset {
   homeDomainUnicode?: string;
 }
 
+export type ParsedOperation = OperationRecord & {
+  readonly account: string;
+};
+
 export interface ParsedTransaction {
   sourceAccount: string;
-  operations: OperationRecord[];
+  operations: ParsedOperation[];
   feeBumped: boolean;
 }
 

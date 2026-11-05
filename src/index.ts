@@ -9,14 +9,18 @@ export { parseEnvelope } from "./parseEnvelope.js";
 export {
   lookalikeAssetIssuerRule,
   MAX_ISSUER_LOOKUPS,
+} from "./rules/lookalikeAssetIssuer.js";
+export {
+  rules,
   type Rule,
   type RuleContext,
   type RuleResult,
-} from "./rules/lookalikeAssetIssuer.js";
+} from "./rules/index.js";
 export type {
   AnalysisResult,
   Finding,
   FindingReason,
+  ParsedOperation,
   ParsedTransaction,
   Severity,
   UnhandledOperation,

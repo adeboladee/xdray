@@ -22,7 +22,7 @@ export interface RuleResult {
 }
 
 export interface Rule {
-  readonly id: "lookalike-asset-issuer";
+  readonly id: string;
   evaluate(context: RuleContext): Promise<RuleResult>;
 }
 
