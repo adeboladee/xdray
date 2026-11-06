@@ -10,6 +10,8 @@ export {
   lookalikeAssetIssuerRule,
   MAX_ISSUER_LOOKUPS,
 } from "./rules/lookalikeAssetIssuer.js";
+export { masterKeyWeightRule } from "./rules/masterKeyWeight.js";
+export { setOptionsCoverageRule } from "./rules/setOptionsCoverage.js";
 export { signerChangeRule } from "./rules/signerChange.js";
 export {
   rules,

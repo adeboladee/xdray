@@ -19,7 +19,11 @@ export type FindingReason =
   | "signer-hash-x"
   | "signer-pre-auth-tx"
   | "signer-signed-payload"
-  | "unsupported-signer";
+  | "unsupported-signer"
+  | "master-weight-invalid"
+  | "master-key-disabled"
+  | "control-handover"
+  | "master-key-weight-changed";
 
 export interface Finding {
   ruleId: string;
@@ -54,7 +58,7 @@ export interface ParsedTransaction {
 
 export interface UnhandledOperation {
   operationIndex: number;
-  reason: "liquidity-pool-trustline";
+  reason: "liquidity-pool-trustline" | "set-options-fields-unchecked";
   message: string;
 }
 
